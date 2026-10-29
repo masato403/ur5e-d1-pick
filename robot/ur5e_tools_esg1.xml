@@ -1,0 +1,197 @@
+<mujoco model="ur5e tools">
+  <compiler angle="radian" meshdir="../models/menagerie/m/universal_robots_ur5e/assets/"/>
+
+  <option impratio="10" integrator="implicitfast" cone="elliptic"/>
+
+  <size nkey="1"/>
+
+  <visual>
+    <global offwidth="1280" offheight="960"/>
+    <quality shadowsize="0"/>
+    <headlight ambient="0.35 0.35 0.35" diffuse="0.45 0.45 0.45" specular="0.05 0.05 0.05"/>
+  </visual>
+
+  <default>
+    <default class="ur5e">
+      <material shininess="0.25"/>
+      <joint range="-6.28319 6.28319" armature="0.1" axis="0 1 0"/>
+      <site size="0.001 0.005 0.005" group="4" rgba="0.5 0.5 0.5 0.3"/>
+      <general ctrlrange="-6.2831 6.2831" forcerange="-150 150" biastype="affine" gainprm="2000" biasprm="0 -2000 -400"/>
+      <default class="size3">
+        <default class="size3_limited">
+          <joint range="-3.1415 3.1415"/>
+          <general ctrlrange="-3.1415 3.1415"/>
+        </default>
+      </default>
+      <default class="size1">
+        <general forcerange="-28 28" gainprm="500" biasprm="0 -500 -100"/>
+      </default>
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+      </default>
+      <default class="collision">
+        <geom type="capsule" group="3"/>
+        <default class="eef_collision">
+          <geom type="cylinder"/>
+        </default>
+      </default>
+    </default>
+  </default>
+
+  <asset>
+    <texture type="2d" colorspace="auto" name="wood" builtin="flat" rgb1="0.78 0.76 0.72" width="64" height="64"/>
+    <material name="black" class="ur5e" rgba="0.033 0.033 0.033 1"/>
+    <material name="jointgray" class="ur5e" rgba="0.278 0.278 0.278 1"/>
+    <material name="linkgray" class="ur5e" rgba="0.82 0.82 0.82 1"/>
+    <material name="urblue" class="ur5e" rgba="0.49 0.678 0.8 1"/>
+    <material name="table" texture="wood"/>
+    <material name="metal" specular="0.6" shininess="0.6" rgba="0.62 0.64 0.67 1"/>
+    <mesh name="base_0" file="base_0.obj"/>
+    <mesh name="base_1" file="base_1.obj"/>
+    <mesh name="shoulder_0" file="shoulder_0.obj"/>
+    <mesh name="shoulder_1" file="shoulder_1.obj"/>
+    <mesh name="shoulder_2" file="shoulder_2.obj"/>
+    <mesh name="upperarm_0" file="upperarm_0.obj"/>
+    <mesh name="upperarm_1" file="upperarm_1.obj"/>
+    <mesh name="upperarm_2" file="upperarm_2.obj"/>
+    <mesh name="upperarm_3" file="upperarm_3.obj"/>
+    <mesh name="forearm_0" file="forearm_0.obj"/>
+    <mesh name="forearm_1" file="forearm_1.obj"/>
+    <mesh name="forearm_2" file="forearm_2.obj"/>
+    <mesh name="forearm_3" file="forearm_3.obj"/>
+    <mesh name="wrist1_0" file="wrist1_0.obj"/>
+    <mesh name="wrist1_1" file="wrist1_1.obj"/>
+    <mesh name="wrist1_2" file="wrist1_2.obj"/>
+    <mesh name="wrist2_0" file="wrist2_0.obj"/>
+    <mesh name="wrist2_1" file="wrist2_1.obj"/>
+    <mesh name="wrist2_2" file="wrist2_2.obj"/>
+    <mesh name="wrist3" file="wrist3.obj"/>
+    <mesh name="g_right_stem" vertex="-0.012 0 0 0.012 0 0 -0.012 0.0065 0 0.012 0.0065 0 -0.006 0 0.045 0.006 0 0.045 -0.006 0.0045 0.045 0.006 0.0045 0.045"/>
+    <mesh name="g_left_stem" vertex="-0.012 0 0 0.012 0 0 -0.012 0.0065 0 0.012 0.0065 0 -0.006 0 0.045 0.006 0 0.045 -0.006 0.0045 0.045 0.006 0.0045 0.045"/>
+  </asset>
+
+  <worldbody>
+    <geom name="floor" size="2 2 0.05" type="plane" material="table"/>
+    <geom name="bin" size="0.1 0.1 0.001" pos="-0.32 0.45 0.001" type="box" contype="0" conaffinity="0" rgba="0.95 0.8 0.1 1"/>
+    <geom name="wall_n" size="0.115 0.005 0.015" pos="-0.32 0.555 0.015" type="box" rgba="0.75 0.55 0.05 1"/>
+    <geom name="wall_s" size="0.115 0.005 0.015" pos="-0.32 0.345 0.015" type="box" rgba="0.75 0.55 0.05 1"/>
+    <geom name="wall_e" size="0.005 0.1 0.015" pos="-0.215 0.45 0.015" type="box" rgba="0.75 0.55 0.05 1"/>
+    <geom name="wall_w" size="0.005 0.1 0.015" pos="-0.425 0.45 0.015" type="box" rgba="0.75 0.55 0.05 1"/>
+    <camera name="top" pos="0 0.5 0.9"/>
+    <light name="spotlight" target="wrist_2_link" pos="0 -1 2" mode="targetbodycom"/>
+    <light castshadow="false" pos="0 0.5 2" diffuse="0.3 0.3 0.3" type="directional"/>
+    <body name="base" childclass="ur5e" quat="0 0 0 -1">
+      <inertial pos="0 0 0" mass="4" diaginertia="0.00443333 0.00443333 0.0072"/>
+      <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="black" mesh="base_0"/>
+      <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="jointgray" mesh="base_1"/>
+      <body name="shoulder_link" pos="0 0 0.163">
+        <inertial pos="0 0 0" mass="3.7" diaginertia="0.0102675 0.0102675 0.00666"/>
+        <joint name="shoulder_pan_joint" class="size3" axis="0 0 1"/>
+        <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="urblue" mesh="shoulder_0"/>
+        <geom class="visual" quat="1 0 0 0" material="black" mesh="shoulder_1"/>
+        <geom class="visual" quat="1 0 0 0" material="jointgray" mesh="shoulder_2"/>
+        <geom class="collision" size="0.06 0.06" pos="0 0 -0.04"/>
+        <body name="upper_arm_link" pos="0 0.138 0" quat="0.707107 0 0.707107 0">
+          <inertial pos="0 0 0.2125" mass="8.393" diaginertia="0.133886 0.133886 0.0151074"/>
+          <joint name="shoulder_lift_joint" class="size3"/>
+          <geom class="visual" material="linkgray" mesh="upperarm_0"/>
+          <geom class="visual" material="black" mesh="upperarm_1"/>
+          <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="jointgray" mesh="upperarm_2"/>
+          <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="urblue" mesh="upperarm_3"/>
+          <geom class="collision" size="0.06 0.06" pos="0 -0.04 0" quat="0.707107 0.707107 0 0"/>
+          <geom class="collision" size="0.05 0.2" pos="0 0 0.2"/>
+          <body name="forearm_link" pos="0 -0.131 0.425">
+            <inertial pos="0 0 0.196" mass="2.275" diaginertia="0.0311796 0.0311796 0.004095"/>
+            <joint name="elbow_joint" class="size3_limited"/>
+            <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="urblue" mesh="forearm_0"/>
+            <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="linkgray" mesh="forearm_1"/>
+            <geom class="visual" material="black" mesh="forearm_2"/>
+            <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="jointgray" mesh="forearm_3"/>
+            <geom class="collision" size="0.055 0.06" pos="0 0.08 0" quat="0.707107 0.707107 0 0"/>
+            <geom class="collision" size="0.038 0.19" pos="0 0 0.2"/>
+            <body name="wrist_1_link" pos="0 0 0.392" quat="0.707107 0 0.707107 0">
+              <inertial pos="0 0.127 0" mass="1.219" diaginertia="0.0025599 0.0025599 0.0021942"/>
+              <joint name="wrist_1_joint" class="size1"/>
+              <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="black" mesh="wrist1_0"/>
+              <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="urblue" mesh="wrist1_1"/>
+              <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="jointgray" mesh="wrist1_2"/>
+              <geom class="collision" size="0.04 0.07" pos="0 0.05 0" quat="0.707107 0.707107 0 0"/>
+              <body name="wrist_2_link" pos="0 0.127 0">
+                <inertial pos="0 0 0.1" mass="1.219" diaginertia="0.0025599 0.0025599 0.0021942"/>
+                <joint name="wrist_2_joint" class="size1" axis="0 0 1"/>
+                <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="black" mesh="wrist2_0"/>
+                <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="urblue" mesh="wrist2_1"/>
+                <geom class="visual" pos="0 0 0" quat="1 0 0 0" material="jointgray" mesh="wrist2_2"/>
+                <geom class="collision" size="0.04 0.06" pos="0 0 0.04"/>
+                <geom class="collision" size="0.04 0.04" pos="0 0.02 0.1" quat="0.707107 0.707107 0 0"/>
+                <body name="wrist_3_link" pos="0 0 0.1">
+                  <inertial pos="0 0.0771683 0" quat="0.707107 0 0 0.707107" mass="0.1889" diaginertia="0.000132134 9.90863e-05 9.90863e-05"/>
+                  <joint name="wrist_3_joint" class="size1"/>
+                  <geom class="visual" quat="1 0 0 0" material="linkgray" mesh="wrist3"/>
+                  <geom class="eef_collision" size="0.04 0.02" pos="0 0.08 0" quat="0.707107 0.707107 0 0"/>
+                  <site name="attachment_site" pos="0 0.1 0" quat="-0.707107 0.707107 0 0"/>
+                  <body name="g_base" pos="0 0.1 0" quat="-0.707107 0.707107 0 0">
+                    <geom name="g_adapter" size="0.04 0.006" pos="0 0 0.006" type="cylinder" contype="0" conaffinity="0" group="2" rgba="0.15 0.15 0.16 1" mass="0.05"/>
+                    <geom name="g_flange" size="0.0375 0.006" pos="0.00496 0 0.018" type="cylinder" contype="0" conaffinity="0" group="2" rgba="0.7 0.7 0.72 1" mass="0.15"/>
+                    <geom name="g_body" size="0.023 0.03 0.0415" pos="0.00496 0 0.0655" type="box" condim="4" rgba="0.62 0.64 0.66 1" mass="0.6"/>
+                    <site name="g_pinch" size="0.003" pos="0 0 0.155" rgba="1 0 0 0.5"/>
+                    <body name="g_right_finger" pos="0.00496 0.001 0.107">
+                      <joint name="g_right_slide" type="slide" range="0 0.0114" armature="0.01" damping="20" limited="true"/>
+                      <geom name="g_right_jaw" size="0.012 0.00825 0.0015" pos="0 0.00775 0.0015" type="box" condim="4" rgba="0.55 0.57 0.6 1" mass="0.03"/>
+                      <geom name="g_right_base" size="0.012 0.008 0.005" pos="0 0.008 0.008" type="box" condim="4" rgba="0.8 0.12 0.1 1" mass="0.01"/>
+                      <geom name="g_right_pad1" pos="0 0 0.003" quat="1 0 0 0" type="mesh" condim="4" rgba="0.8 0.12 0.1 1" mass="0.01" mesh="g_right_stem"/>
+                    </body>
+                    <body name="g_left_finger" pos="0.00496 -0.001 0.107" quat="0 0 0 1">
+                      <joint name="g_left_slide" type="slide" range="0 0.0114" armature="0.01" damping="20" limited="true"/>
+                      <geom name="g_left_jaw" size="0.012 0.00825 0.0015" pos="0 0.00775 0.0015" type="box" condim="4" rgba="0.55 0.57 0.6 1" mass="0.03"/>
+                      <geom name="g_left_base" size="0.012 0.008 0.005" pos="0 0.008 0.008" type="box" condim="4" rgba="0.8 0.12 0.1 1" mass="0.01"/>
+                      <geom name="g_left_pad1" pos="0 0 0.003" quat="1 0 0 0" type="mesh" condim="4" rgba="0.8 0.12 0.1 1" mass="0.01" mesh="g_left_stem"/>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="screwdriver" pos="0.1 0.4 0.014">
+      <joint type="free"/>
+      <geom size="0.014 0.03" pos="-0.035 0 0" quat="0.707107 0 -0.707107 0" type="capsule" condim="6" friction="1 0.005 0.003" rgba="0.85 0.15 0.1 1" mass="0.05"/>
+      <geom size="0.004 0.035" pos="0.03 0 0" quat="0.707107 0 -0.707107 0" type="cylinder" condim="6" friction="1 0.005 0.003" mass="0.02" material="metal"/>
+    </body>
+    <body name="pen" pos="0.2 0.55 0.006">
+      <joint type="free"/>
+      <geom size="0.006 0.0425" pos="-0.0125 0 0" quat="0.707107 0 -0.707107 0" type="capsule" condim="6" friction="1 0.005 0.003" rgba="0.1 0.3 0.85 1" mass="0.01"/>
+      <geom size="0.0065 0.0125" pos="0.0425 0 0" quat="0.707107 0 -0.707107 0" type="capsule" condim="6" friction="1 0.005 0.003" rgba="0.05 0.05 0.06 1" mass="0.005"/>
+    </body>
+    <body name="screw1" pos="0 0.6 0.009">
+      <joint type="free"/>
+      <geom size="0.009 0.003" pos="-0.019 0 0" quat="0.707107 0 -0.707107 0" type="cylinder" condim="6" friction="1 0.005 0.003" mass="0.005" material="metal"/>
+      <geom size="0.004 0.019" pos="0.003 0 0" quat="0.707107 0 -0.707107 0" type="cylinder" condim="6" friction="1 0.005 0.003" mass="0.005" material="metal"/>
+    </body>
+    <body name="screw2" pos="0.25 0.35 0.009">
+      <joint type="free"/>
+      <geom size="0.009 0.003" pos="-0.019 0 0" quat="0.707107 0 -0.707107 0" type="cylinder" condim="6" friction="1 0.005 0.003" mass="0.005" material="metal"/>
+      <geom size="0.004 0.019" pos="0.003 0 0" quat="0.707107 0 -0.707107 0" type="cylinder" condim="6" friction="1 0.005 0.003" mass="0.005" material="metal"/>
+    </body>
+  </worldbody>
+
+  <equality>
+    <joint joint1="g_left_slide" joint2="g_right_slide"/>
+  </equality>
+
+  <actuator>
+    <general name="shoulder_pan" class="size3" joint="shoulder_pan_joint"/>
+    <general name="shoulder_lift" class="size3" joint="shoulder_lift_joint"/>
+    <general name="elbow" class="size3_limited" joint="elbow_joint"/>
+    <general name="wrist_1" class="size1" joint="wrist_1_joint"/>
+    <general name="wrist_2" class="size1" joint="wrist_2_joint"/>
+    <general name="wrist_3" class="size1" joint="wrist_3_joint"/>
+    <general name="g_fingers" joint="g_right_slide" ctrlrange="0 0.0114" ctrllimited="true" forcelimited="true" forcerange="-40 40" biastype="affine" gainprm="4000" biasprm="0 -4000"/>
+  </actuator>
+
+  <keyframe>
+    <key name="home" qpos="-1.5708 -1.5708 1.5708 -1.5708 -1.5708 0 0 0 0.1 0.4 0.014 1 0 0 0 0.2 0.55 0.006 1 0 0 0 0 0.6 0.009 1 0 0 0 0.25 0.35 0.009 1 0 0 0" ctrl="-1.5708 -1.5708 1.5708 -1.5708 -1.5708 0 0"/>
+  </keyframe>
+</mujoco>

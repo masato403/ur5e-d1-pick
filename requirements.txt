@@ -1,0 +1,12 @@
+# 判断 AI のサーバーとシミュレーター（GPU、PyTorch は CUDA 版を入れる）
+torch==2.11.0
+torchao==0.18.0
+transformers==5.19.0
+mujoco==3.15.0
+numpy
+opencv-python
+pillow
+
+# 実機（ロボット・ハンド・カメラ。PyTorch は不要）
+ur_rtde==1.6.5
+pyserial==3.5

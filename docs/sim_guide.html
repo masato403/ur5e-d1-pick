@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>シミュレーターの仕組み</title>
+<style>
+:root{
+  --bg:#f7f7f4; --card:#ffffff; --ink:#1f2328; --sub:#59636e; --line:#d8dbe0;
+  --accent:#2f6fde; --accent-bg:#e8f0fd; --ok:#1a7f37; --ok-bg:#e6f4ea;
+  --warn:#9a6700; --warn-bg:#fff4d6; --bad:#c62828; --bad-bg:#fde8e8; --purple:#7a3fc8; --purple-bg:#f1e8fd;
+  --code:#f0f1f3;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16181c; --card:#1f2228; --ink:#e6e8eb; --sub:#a0a8b3; --line:#343a44;
+    --accent:#6ea0ff; --accent-bg:#1d2a44; --ok:#5cc777; --ok-bg:#16301f;
+    --warn:#e0b13c; --warn-bg:#3a2f12; --bad:#ff7b7b; --bad-bg:#3d1c1c; --purple:#b48cff; --purple-bg:#2c2140;
+    --code:#2a2e36;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16181c; --card:#1f2228; --ink:#e6e8eb; --sub:#a0a8b3; --line:#343a44;
+  --accent:#6ea0ff; --accent-bg:#1d2a44; --ok:#5cc777; --ok-bg:#16301f;
+  --warn:#e0b13c; --warn-bg:#3a2f12; --bad:#ff7b7b; --bad-bg:#3d1c1c; --purple:#b48cff; --purple-bg:#2c2140;
+  --code:#2a2e36;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;line-height:1.75;font-size:16px}
+main{max-width:980px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:1.7rem;margin:.2em 0 .1em}
+h2{font-size:1.3rem;margin:2.2em 0 .6em;padding-bottom:.3em;border-bottom:2px solid var(--line)}
+h3{font-size:1.08rem;margin:1.6em 0 .4em}
+p{margin:.5em 0}
+.lead{color:var(--sub)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:12px 0}
+.note{background:var(--accent-bg);border-left:4px solid var(--accent);padding:10px 14px;border-radius:8px;margin:12px 0}
+.warn{background:var(--warn-bg);border-left:4px solid var(--warn);padding:10px 14px;border-radius:8px;margin:12px 0}
+code,kbd{background:var(--code);padding:1px 6px;border-radius:5px;font-family:Consolas,"Cascadia Mono",monospace;font-size:.9em}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;font-size:.88em;line-height:1.5}
+.table-wrap{overflow-x:auto;margin:10px 0}
+table{border-collapse:collapse;width:100%;min-width:560px;background:var(--card);font-size:.93em}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:var(--code)}
+.tag{display:inline-block;font-size:.78em;padding:1px 8px;border-radius:999px;margin-right:4px;white-space:nowrap}
+.t-bug{background:var(--bad-bg);color:var(--bad)}
+.t-fix{background:var(--ok-bg);color:var(--ok)}
+.t-real{background:var(--warn-bg);color:var(--warn)}
+.t-sim{background:var(--accent-bg);color:var(--accent)}
+.t-new{background:var(--purple-bg);color:var(--purple)}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:14px 0}
+.step{flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;position:relative}
+.step b{display:block;color:var(--accent);font-size:.85em}
+.step span{font-size:.92em}
+nav.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 18px}
+nav.toc ol{margin:.3em 0;padding-left:1.4em}
+nav.toc a{color:var(--accent);text-decoration:none}
+.log{border-left:3px solid var(--line);padding-left:14px;margin:10px 0 18px}
+.log h3{margin-top:.6em}
+.small{font-size:.88em;color:var(--sub)}
+svg text{font-family:inherit}
+</style>
+</head>
+<body>
+<main>
+<h1>シミュレーターの仕組み</h1>
+<p class="lead">UR5e とハンド（ESG1）で、机の上の消しゴム・ペン・ドライバーを見つけてつかみ、箱に入れる。その練習を、パソコンの中の「にせの世界」でしている仕組みを、はじめての人にも分かるようにまとめました。後ろの方に、直したこと・見つけたバグの記録があります。</p>
+<p class="small">最終更新：2026-10-19（動きを Chrome の 1 枚のページで見せる）<code>jev/docs/sim_guide.html</code></p>
+
+<nav class="toc"><b>目次</b>
+<ol>
+<li><a href="#why">なぜシミュレーターを使うのか</a></li>
+<li><a href="#world">シミュレーターの中にある物</a></li>
+<li><a href="#flow">1 回つかむまでの流れ</a></li>
+<li><a href="#detail">それぞれの段階のくわしい説明</a></li>
+<li><a href="#tech">技術の中身（AI・ソフト・距離の測り方）</a> <span class="tag t-new">追加</span></li>
+<li><a href="#test">試験のやり方と、成功の決め方</a></li>
+<li><a href="#switch">前のやり方に戻すスイッチ</a></li>
+<li><a href="#track">動く物を追いかける実験</a> <span class="tag t-new">追加</span></li>
+<li><a href="#track2">三脚のカメラで追う実機版（10/22）</a> <span class="tag t-new">追加</span></li>
+<li><a href="#numbers">成績の移り変わり</a></li>
+<li><a href="#log">改善・改良とバグの記録（日付ごとのファイル）</a></li>
+</ol></nav>
+
+<h2 id="why">1. なぜシミュレーターを使うのか</h2>
+<div class="card">
+<p>本物のロボットは、強くぶつかると壊れたり、人が危なかったりします。試すたびに強制停止ボタンのそばにいる必要もあります。シミュレーターなら、何十回でも安全に、速く試せます。</p>
+<p>大事なのは、<b>実機で動かすプログラムを、そのままシミュレーターで動かしている</b>ことです。シミュレーターだけで通用するずるい近道は使いません。シミュレーターで直した所は、そのまま実機のプログラムの直しになります。</p>
+</div>
+<div class="note">シミュレーターで上手くいっても、実機で確かめるまでは「仮」です。表の中の <span class="tag t-real">実機で未確認</span> がその印です。</div>
+
+<h2 id="world">2. シミュレーターの中にある物</h2>
+<p>物理の計算には <code>MuJoCo</code>（ムジョコ）という道具を使っています。物が落ちる、ぶつかる、挟まれる、を計算してくれます。</p>
+<div class="table-wrap"><table>
+<tr><th>物</th><th>中身</th><th>ファイル</th></tr>
+<tr><td>腕（UR5e）</td><td>実機と同じ 6 つの関節。関節は「目標の角度へ戻ろうとするバネ」で動く</td><td><code>robot/ur5e_tools.xml</code></td></tr>
+<tr><td>ハンド（ESG1）</td><td>ESG1 の寸法で作った手。灰色の本体と赤い 2 本の指。指は最大 24.8mm 開く。挟む力は 40N × 割合</td><td><code>robot/sim_esg1.py</code></td></tr>
+<tr><td>カメラ</td><td>3D プリンターで作った台の上に付いた手首のカメラ。実機で測った校正（レンズの曲がり・向き・位置）をそのまま使う</td><td><code>robot/sim_real.py</code></td></tr>
+<tr><td>マット</td><td>A3 のカッターマット（450×320mm、10mm の方眼）</td><td><code>robot/sim_real.py</code></td></tr>
+<tr><td>箱 <span class="tag t-new">追加</span></td><td>実機と同じステンレスのトレー。縁の外側 横 150mm×縦 200mm・高さ 50mm、壁は外へ広がる斜め。マットの上の左の端（<code>SIM_BOX=card</code> で前の仮の段ボール箱）。物を探す位置は右へ 60mm ずらした</td><td><code>robot/sim_real.py</code></td></tr>
+<tr><td>道具 3 つ</td><td>消しゴム（52×20×12mm、青いカバー付き）、ペン（長さ 145mm・太さ 11mm）、銀の棒（長さ 77mm・太さ 11mm、片方の端に白いラベル。明るさ 0.55 の灰色。10/19 にドライバーから替えた。<code>SIM_TOOL3=driver</code> で前のドライバー（持ち手 太さ 25mm・軸 太さ 5mm））</td><td><code>robot/sim_real.py</code></td></tr>
+<tr><td>にせのロボット</td><td>実機のロボットとハンドと同じ使い方（<code>moveL</code>、<code>getActualTCPPose</code> など）ができる身代わり。これのおかげで実機のプログラムがそのまま動く</td><td><code>robot/sim_rtde.py</code></td></tr>
+</table></div>
+<h3>にせのロボットがまねしていること</h3>
+<ul>
+<li><b>動き方：</b>実機と同じく、加速 → 一定の速さ → 減速（台形）で、手先をまっすぐ動かす。</li>
+<li><b>保護停止：</b>実機は強くぶつかると自分で止まる。まねして、ハンドに 60N を超える力がかかったら止まり、何に当たったかを表示する。</li>
+<li><b>撮る前の待ち：</b>腕が止まってから 0.5 秒待って撮る（実機と同じ）。この時間もシミュレーターの中の時間で数える。</li>
+</ul>
+
+<h2 id="flow">3. 1 回つかむまでの流れ</h2>
+<div class="flow">
+<div class="step"><b>1. 見張りの位置</b><span>マットの上 150mm へ。カメラは真下を向く</span></div>
+<div class="step"><b>2. 3 枚撮る</b><span>右 → 真ん中 → 左（横に 35mm ずつ）。下には下ろさない</span></div>
+<div class="step"><b>3. 物を見つける</b><span>真ん中の写真で、マットと色が違う所の輪郭を取る</span></div>
+<div class="step"><b>4. 高さを測る</b><span>ずらして撮った写真との「見え方のずれ」から高さを出す</span></div>
+<div class="step"><b>5. つかみ方を決める</b><span>つかむ所・手首の向き・指先を下ろす高さ</span></div>
+<div class="step"><b>6. 下りて挟む</b><span>真上で指を開き、下りて、閉じる</span></div>
+<div class="step"><b>7. 持てたか確かめる</b><span>持ち上げて、指の開き量が 2mm より大きければ持てている</span></div>
+<div class="step"><b>8. 箱へ</b><span>箱の上へ運び、下ろして離す</span></div>
+</div>
+<p>持てていなかったら、指を開いて上がり、撮り直して同じ物を測り直し、やり直します（最大 2 回）。やり直すたびに指先を 2mm ずつ低くします。</p>
+
+<h2 id="detail">4. それぞれの段階のくわしい説明</h2>
+
+<h3>4-1. 物を見つける</h3>
+<div class="card">
+<p>マットの色（方眼の線を含めて 2 色）を覚えておき、それと違う色の所を「物」とします。方眼の線と物の境目は色が混ざって小さな出っ張りになり、幅を 2〜4mm 太く測っていたので、輪郭を少し削って整えています。</p>
+<p>まわりがマットでない物（マットからはみ出た物、枠の上の物）は、高さが正しく測れないので、つかむ候補から外します。</p>
+<p><b>マットとみなす所</b> <span class="tag t-new">追加</span>：物は「マットに囲まれた、マットの色でない塊」として探します。そのため、物が次の所に触れていると、外とつながって物になりませんでした（10/19 夜の実機）。そこで、次の所は色に関係なくマットとして扱います。</p>
+<ul>
+<li><b>箱の所</b>：マットの上に置いた箱。光る箱を物と見間違えず、箱に入れた物をまたつかみに行きません。箱の縁にかかった物は外します。</li>
+<li><b>指の所</b>：写真の中で、赤い指に重なって見える物（ペンの端が指に隠れていた）。ハンドの本体とつながる赤い所だけを指とみなします。</li>
+<li><b>写真の上の端の狭いすき間</b>：写真の上の端に触れて置いた物。</li>
+</ul>
+<p>また、ペンは握りの上の銀色の輪がマットの色に近く、2 つに切れて見えました。一直線に端と端で並んだ細長い 2 つの塊は、1 つの物としてつなぎます <span class="tag t-new">追加</span>。</p>
+</div>
+
+<h3>4-2. 高さを測る（いちばん大事な所）</h3>
+<div class="card">
+<p>人が片目ずつで見ると、近い物ほど左右で位置がずれて見えます。同じ考えで、カメラを横に 35mm ずらして撮ると、<b>高い物ほど写る位置が大きくずれます</b>。</p>
+<svg viewBox="0 0 520 170" width="100%" style="max-width:520px" role="img" aria-label="ずらして撮ると高い物ほどずれる図">
+  <rect x="10" y="140" width="500" height="10" fill="#b9a98c"/>
+  <rect x="150" y="105" width="70" height="35" fill="#2f6fde"/>
+  <text x="152" y="100" font-size="12" fill="currentColor">物（高さ h）</text>
+  <rect x="80" y="10" width="40" height="22" fill="#555"/><text x="62" y="48" font-size="12" fill="currentColor">真ん中で撮る</text>
+  <rect x="300" y="10" width="40" height="22" fill="#555"/><text x="288" y="48" font-size="12" fill="currentColor">横へ 35mm ずらす</text>
+  <line x1="100" y1="32" x2="185" y2="105" stroke="#c62828" stroke-dasharray="4 3"/>
+  <line x1="320" y1="32" x2="185" y2="105" stroke="#c62828" stroke-dasharray="4 3"/>
+</svg>
+<p>やり方：「もし高さが h mm なら、右の写真ではここに写るはず」を 0〜80mm のいろいろな h で試し、<b>いちばん模様が似ている h</b> を答えにします。まず 2mm おきに粗く比べ、良さそうな所の近くを 0.5mm おきに細かく比べます。</p>
+<p>指の陰になる所は比べません。右と左の 2 枚のうち、よく合う方を使います（右だけにすると、30 個中 10 個で答えが変わったので 3 枚撮っています）。</p>
+<p><b>弱点：</b>模様の無い一色の面（ペンの軸、消しゴムのカバー）は、どの高さでも同じくらい似て見え、高さがばらつきます。</p>
+</div>
+
+<h3>4-3. 区切って測る・形を見分ける</h3>
+<div class="card">
+<p>物を長い向きに 4 つに区切って、区切りごとに高さと幅を測ります。</p>
+<ul>
+<li><b>太さが変わる物</b>（ドライバー）：区切りの幅の差が 5mm より大きい。いちばん高い所をその物の高さにする。</li>
+<li><b>太さが変わらない物</b>（ペン・消しゴム）：物全体の高さと、区切りの高さの<b>中央値</b>にする（外れた 1 区切りに引っぱられない）。</li>
+<li><b>寝かせた円柱</b>（ペン）：高さが幅の 0.68 倍以上なら円柱とみなし、太さ ＝ 高さ とする。</li>
+</ul>
+</div>
+
+<h3>4-4. つかみ方を決める</h3>
+<div class="card">
+<ul>
+<li><b>つかむ所：</b>ふつうは物の真ん中。ドライバーの持ち手（25mm）は指（最大 24.8mm）に入らないので、いちばん細い所（軸）をつかむ。</li>
+<li><b>手首の向き：</b>物の長い向きに直角に指が閉じるように回す。手首の関節は ±180° の中で回す決まり。</li>
+<li><b>指先を下ろす高さ：</b>形で変える。どれも机から 4mm より下には下ろさない。</li>
+</ul>
+<div class="table-wrap"><table>
+<tr><th>形</th><th>指先の高さ</th><th>理由</th></tr>
+<tr><td>四角い物（消しゴム）</td><td>高さの半分</td><td>指の面全体で挟める</td></tr>
+<tr><td>丸い物（ペン）</td><td>高さの 0.3 倍</td><td>半分だと、指の先端が一番太い所に当たって滑って抜けた</td></tr>
+<tr><td>ドライバーの軸</td><td>軸の下の面より 1.5mm 下</td><td>軸の中心の高さだと、指の一番下の端しか軸にかからなかった</td></tr>
+</table></div>
+<p><b>指のずれの補正：</b>ハンドの指の真ん中は、手先の点から約 5mm ずれた所にあります。そのずれを打ち消す向きに手先を動かします（向きは −1。下の記録を参照）。</p>
+</div>
+
+<h2 id="tech">5. 技術の中身 <span class="tag t-new">追加</span></h2>
+
+<h3>5-1. AI は使っているか</h3>
+<div class="card">
+<p><b>今のつかむ流れには、AI（学習したニューラルネット）は使っていません。</b>物を見つける・高さを測る・つかみ方を決める、のどれも、画像処理と幾何（三角形の計算）と、決めた決まり（もし〜なら〜する）で動いています。</p>
+<ul>
+<li>良い所：速い（探す計算 約 1〜2 秒、パソコンの CPU だけ）。なぜそう判断したかを、数字で説明できる（記録に「区切りの幅の差 14mm → 太さが変わる物」のように出る）。</li>
+<li>弱い所：決まりに無い物や形には弱い。模様の無い面の高さのように、決まりを足して直していく必要がある。</li>
+<li>AI の物体検出（YOLO など）や、AI の学習し直し（微調整）は使わない方針です。</li>
+</ul>
+</div>
+
+<h3>5-2. 何が何を動かしているか</h3>
+<div class="table-wrap"><table>
+<tr><th>役目</th><th>実機</th><th>シミュレーター</th></tr>
+<tr><td>全体の段取り（探す → 決める → つかむ → 運ぶ）</td><td colspan="2">パソコンの <b>Python</b> のプログラム（<code>real_ur/pick_any.py</code>、<code>pick_by_camera.py</code>、<code>height_by_motion.py</code>、<code>measure.py</code>、<code>locate.py</code>）。実機もシミュレーターも同じファイル</td></tr>
+<tr><td>腕を動かす</td><td>UR5e の<b>制御箱</b>（UR のコントローラ）。パソコンは <code>ur_rtde</code> というライブラリで、LAN（RTDE という通信）から「この位置へまっすぐ動け（<code>moveL</code>）」と送るだけ。関節の角度の計算と、関節のモーターの制御は制御箱がする</td><td><code>robot/sim_rtde.py</code> の<b>にせのロボット</b>。手先の目標から関節の角度を計算（逆運動学：ヤコビアンを使って少しずつ近づける方法）し、MuJoCo の関節のモーターに渡す</td></tr>
+<tr><td>腕の今の位置を知る</td><td>関節のエンコーダ（回転を数える部品）から、制御箱が手先の位置と向きを計算して返す（<code>getActualTCPPose</code>）。UR5e の繰り返しの精度は約 ±0.03mm（カタログの値）</td><td>MuJoCo が計算した手先の位置をそのまま返す</td></tr>
+<tr><td>ハンド</td><td>TAIYO ESG1 を、自作の基板（Arduino Nano ＋ モーターの駆動 IC TMC2209）で動かす。パソコンとは USB（115200bps の文字のやりとり）。指の開き量はエンコーダで 1mm ＝ 64 カウント</td><td>MuJoCo の、指が横にすべる関節と、位置を保つモーター（最大 40N）</td></tr>
+<tr><td>カメラ</td><td>手首の USB カメラ（1920×1080）。<code>cam_view.py</code> が <code>OpenCV</code> で映像を読み、合図が来たら最新の 1 枚を保存する</td><td>MuJoCo の描画（<code>mujoco.Renderer</code>）。焦点距離・向き・位置は実機の校正の値</td></tr>
+<tr><td>物理（重さ・ぶつかり・挟む）</td><td>本物の世界</td><td><b>MuJoCo</b>（物理の計算の道具）。2ms ごとに計算し、20ms ごとに腕の目標を進める</td></tr>
+<tr><td>画像処理</td><td colspan="2"><b>OpenCV</b>（画像処理の道具）：色の分け方（Lab という色の表し方で背景の 2 色を求める）、輪郭、物を囲む長方形。<b>NumPy</b>：行列の計算</td></tr>
+<tr><td>計算する所</td><td colspan="2">パソコンの CPU。GPU（画像の計算が速い部品）はこの流れでは使っていない</td></tr>
+</table></div>
+
+<h3>5-3. 位置と距離をどうやって測っているか</h3>
+<div class="card">
+<p>距離を測るセンサー（レーザーや奥行きカメラ）はありません。<b>カメラ 1 台と、ロボットが自分の位置を正確に知っていること</b>を組み合わせて測っています。</p>
+<ol>
+<li><b>カメラの校正（はじめに 1 回）：</b>マットの方眼（10mm）を、腕の位置を変えて何枚も撮り、<code>cv2.calibrateCamera</code> で「レンズの曲がり」と「焦点距離（約 875 画素）」を求める。続けて <code>cv2.calibrateHandEye</code> で「カメラが手先からどこに、どの向きで付いているか」を求める（手先の点から (−49, 2, −128)mm、外側へ約 28° 傾いている）。結果は <code>real_ur/calib2/calib_result.json</code>。</li>
+<li><b>机の面：</b>ハンドで机を実際に触って、机の高さと傾き（0.29°）を測り、方眼の原点と向きも求めた。</li>
+<li><b>写真の点 → 机の上の位置：</b>写真の 1 点（画素）から、レンズの曲がりを戻して「カメラから出る光の線」を作る。撮った時の手先の位置と向きを使って、その線をロボットの根元から見た向きに直し、机の面（または机から h mm 上の面）と交わる点を求める。その点が、根元から見た位置（mm）になる。</li>
+<li><b>高さ：</b>カメラを横に 35mm ずつ動かして 3 枚撮り、見え方のずれから求める（4-2 の説明）。人の両目と同じ考え（ステレオ）を、目を 2 つ持つ代わりに 1 つの目を動かして行っている。比べ方は「正規化相関」：明るさの模様を平均 0・ばらつき 1 にそろえてから掛け合わせて平均する。1 に近いほど似ている。</li>
+<li><b>つかめたか：</b>持ち上げた後のハンドの開き量（エンコーダ）で判断。2mm より大きければ物が指の間にある。</li>
+<li><b>ぶつかり：</b>実機は UR5e が関節の力から自分で気づいて止まる（保護停止）。シミュレーターは、ハンドにかかる力が 60N を超えたら止める。</li>
+</ol>
+</div>
+<svg viewBox="0 0 560 210" width="100%" style="max-width:560px" role="img" aria-label="写真の点から机の上の位置を求める図">
+  <rect x="10" y="185" width="540" height="10" fill="#b9a98c"/>
+  <text x="440" y="180" font-size="12" fill="currentColor">机（マット）</text>
+  <rect x="60" y="20" width="44" height="24" fill="#555"/><text x="20" y="62" font-size="12" fill="currentColor">カメラ（位置と向きは校正で分かる）</text>
+  <line x1="82" y1="44" x2="330" y2="185" stroke="#2f6fde" stroke-width="2"/>
+  <circle cx="330" cy="185" r="5" fill="#c62828"/>
+  <text x="250" y="120" font-size="12" fill="currentColor">写真の 1 点から出る光の線</text>
+  <text x="300" y="206" font-size="12" fill="currentColor">机と交わる点 ＝ 物の位置（mm）</text>
+</svg>
+<div class="note">誤差の目安（シミュレーター）：高さは本当との差 平均 1.7mm・最大 3.0mm（消しゴム・ペン 20 個）。指の真ん中と物の中心のずれは、消しゴム・ペンで 0〜3mm。</div>
+
+<h3>5-4. 実機で分かった、つかみ方のこつ <span class="tag t-new">追加</span></h3>
+<div class="card">
+<ul>
+<li><b>丸くてつるつるした物（ペン・銀の棒）は、指先を一番太い所より十分下まで下ろす。</b>指は平らな板なので、丸い物に触れるのは一番太い所の高さ。指先がそれより少し下だと、指の面がほとんど回り込めず、持ち上げる途中で抜けた。指先 2〜2.7mm（物の中心より 2.5〜3.5mm 下）で運べた。</li>
+<li><b>挟む力の % は電流ではない。</b>ハンドの資料によると、指を押し込むずれの上限（0% で 3、100% で 11）。電流は別の設定（600mA）。ペン・銀の棒は 100%、柔らかい消しゴムは 60%。</li>
+<li><b>撮る前に、いつも同じ位置へ戻る。</b>撮る位置は「今いる所」から決まるので、物を置いた後のまま撮ると、写る範囲と向きがずれた（<code>real_ur/go_start.py</code>）。</li>
+<li><b>つなぎっぱなしで続けて動かす。</b>1 回ごとにプログラムを起動してロボットにつなぎ直すと、1 つに 48 秒かかった。<code>real_ur/pick_pass.py</code> でつなぎっぱなしにして約 20 秒。物は位置ではなく形（長さ・幅）で選ぶ（ペンは置くと転がる）。</li>
+<li><b>加速度は 0.8 のまま。</b> <span class="tag t-new">追加</span> 1.2 にすると 1 つ約 1.5 秒速くなったが、持ち上げる途中で物が滑って落ちた（3 回中 2 回）。</li>
+<li><b>滑った時は、ゆっくり持ち上げてやり直す。</b> <span class="tag t-new">追加</span> 滑った時の選択肢が無いと、d1-3B は回数が残っているのに「やめる」を選んだ。「ゆっくり持ち上げる」を足すと、それを選ぶようになった（実機ではまだ使われていない）。</li>
+<li><b>撮る前の待ちは 0.15 秒で足りる。</b>0〜0.5 秒で写真のぶれも測った値も変わらなかった。カメラは 1 秒に 4.3 枚しか出ておらず、1 枚の受け渡しに約 0.9 秒かかるのが、撮る時間の大きな部分。</li>
+</ul>
+</div>
+
+<h3>5-5. プログラムの部品</h3>
+<div class="table-wrap"><table>
+<tr><th>ファイル</th><th>していること</th></tr>
+<tr><td><code>real_ur/measure.py</code></td><td>物を見つける（色・輪郭）、机の上の点を写真の画素へ写す</td></tr>
+<tr><td><code>real_ur/locate.py</code></td><td>校正の値を読む、写真の点 → 机の上の位置、撮る合図、写真を日付ごとに残す</td></tr>
+<tr><td><code>real_ur/height_by_motion.py</code></td><td>3 枚撮る、高さを測る（ずれの比べ）</td></tr>
+<tr><td><code>real_ur/pick_any.py</code></td><td>物ごとの高さ・中心・向き・大きさをまとめ、つかむ物と下ろす高さを決める。やり直し</td></tr>
+<tr><td><code>real_ur/pick_by_camera.py</code></td><td>実際の動き（手首を回す・真上へ・開く・下りる・閉じる・持ち上げる・運ぶ・離す）</td></tr>
+<tr><td><code>real_ur/hand.py</code></td><td>ハンドとの USB の通信</td></tr>
+<tr><td><code>robot/sim_real.py</code>・<code>sim_esg1.py</code></td><td>シミュレーターの世界（マット・箱・道具・カメラ・ハンド）を作る</td></tr>
+<tr><td><code>robot/sim_rtde.py</code></td><td>にせのロボットとにせのハンド</td></tr>
+<tr><td><code>robot/test_sim_grasp.py</code></td><td>試験（場面を作って、つかんで、成功を数える）</td></tr>
+<tr><td><code>tools/real_ur_version.py</code></td><td>実機のプログラムの版を残す・戻す</td></tr>
+</table></div>
+
+<h2 id="test">6. 試験のやり方と、成功の決め方</h2>
+<pre>cd ur5e-d1-pick
+.venv\Scripts\python.exe robot\test_sim_grasp.py 5 --show</pre>
+<ul>
+<li><code>5</code> は場面の数。<code>--show</code> で動きを見せる（シミュレーターが主の日は見せる決まり）。<span class="tag t-new">変更</span> 10/19 から、窓ではなく <b>Chrome の 1 枚のページ</b>（3D の動き・撮った 3 枚の写真・進み具合の文字）で見せる。いつもの Chrome に普通のタブとして開く。ページは <code>http://127.0.0.1:8765/</code>。3D の絵はドラッグで回し、ホイールで寄れる。</li>
+<li>場面ごとに、3 つの道具をマットの上（端から 20mm 以上内側、箱から 45mm 以上離して、重ならないように）に置く。置ける所が無い道具はその場面に出さない。</li>
+<li><b>成功：</b>持てて、運んで、箱の中（箱の内側の範囲で、箱の縁より低い所）に入ったこと。</li>
+<li>箱に入れられなかった物は、その場に残す。場面の終わりには 2 秒止めてから並べ直す。</li>
+<li>記録は <code>robot/logs/</code> に残す。</li>
+</ul>
+<div class="table-wrap"><table>
+<tr><th>調べ用の設定</th><th>出るもの</th></tr>
+<tr><td><code>GRASP_DEBUG=1</code></td><td>測った値と本当の値、場面の写真</td></tr>
+<tr><td><code>PA_DEBUG=1</code></td><td>区切りごとの高さと幅、つかみ方を決めた理由</td></tr>
+<tr><td><code>SIM_TRACE=1</code></td><td>腕が動くたびの、止まった所と目標のずれ</td></tr>
+</table></div>
+
+<h2 id="switch">7. 前のやり方に戻すスイッチ</h2>
+<p>新しくした所が上手くいかない時に戻れるよう、どれも設定 1 つで前のやり方に戻せます。実機のプログラムは版ごとにも残せます（<code>tools\real_ur_version.py save 名前</code>／<code>restore 名前</code>）。</p>
+<div class="table-wrap"><table>
+<tr><th>設定</th><th>今（初めの値）</th><th>前に戻す</th><th>場所</th></tr>
+<tr><td>指のずれの補正の向き</td><td><code>PB_BIAS_SIGN=-1</code></td><td><code>PB_BIAS_SIGN=1</code></td><td><span class="tag t-real">実機</span> pick_by_camera</td></tr>
+<tr><td>指先を下ろす高さ</td><td><code>PA_GRIP_RULE=shape</code></td><td><code>PA_GRIP_RULE=half</code></td><td><span class="tag t-real">実機</span> pick_any</td></tr>
+<tr><td>太さが変わる物の見分け方</td><td><code>PA_STEP_RULE=width</code></td><td><code>PA_STEP_RULE=height</code></td><td><span class="tag t-real">実機</span> pick_any</td></tr>
+<tr><td>平行にくっついた 2 つの細長い物を、同じ物の二重として 1 つにする <span class="tag t-new">追加</span></td><td><code>PA_TWIN=1</code></td><td><code>PA_TWIN=0</code></td><td><span class="tag t-real">実機</span> pick_any</td></tr>
+<tr><td>高さを決める写真の使い方</td><td><code>PA_COMBINE=mean</code></td><td><code>PA_COMBINE=best</code></td><td><span class="tag t-real">実機</span> pick_any</td></tr>
+<tr><td>太さが変わらない物の高さ</td><td><code>PA_UNIFORM_H=median</code></td><td><code>PA_UNIFORM_H=max</code></td><td><span class="tag t-real">実機</span> pick_any</td></tr>
+<tr><td>撮る順番</td><td><code>BH_ORDER=BAC</code></td><td><code>BH_ORDER=ABC</code></td><td><span class="tag t-real">実機</span> height_by_motion</td></tr>
+<tr><td>速い写し方</td><td><code>BH_FAST_PROJ=1</code></td><td><code>BH_FAST_PROJ=0</code></td><td><span class="tag t-real">実機</span> height_by_motion</td></tr>
+<tr><td>撮る前の待ち（秒） <span class="tag t-new">追加</span></td><td><code>LOC_SETTLE=0.15</code></td><td><code>LOC_SETTLE=0.5</code></td><td><span class="tag t-real">実機</span> locate</td></tr>
+<tr><td>腕の速さ（運ぶ・下りる速い所・持ち上げる、m/秒） <span class="tag t-new">追加</span></td><td><code>PB_SPEED=0.25</code>・<code>PB_DOWN_FAST=0.25</code>・<code>PB_LIFT_SPEED=0.25</code></td><td>0.15・0.05・0.08</td><td><span class="tag t-real">実機</span> pick_by_camera</td></tr>
+<tr><td>加速度（m/秒²） <span class="tag t-new">追加</span></td><td><code>PB_ACCEL=0.8</code></td><td><code>PB_ACCEL=0.5</code></td><td><span class="tag t-real">実機</span> pick_by_camera</td></tr>
+<tr><td>離す時に開く量 <span class="tag t-new">追加</span></td><td><code>PB_RELEASE_GAP=6</code>（物の幅 ＋ 6mm）</td><td><code>PB_RELEASE_GAP=0</code>（全開）</td><td><span class="tag t-real">実機</span> pick_by_camera</td></tr>
+<tr><td>丸い物の指先の下限（mm） <span class="tag t-new">追加</span></td><td><code>PA_ROUND_MIN=2</code></td><td><code>PA_ROUND_MIN=4</code></td><td><span class="tag t-real">実機</span> pick_any</td></tr>
+<tr><td>細長い物を丸い物として扱う <span class="tag t-new">追加</span></td><td><code>PA_ELONG=1</code></td><td><code>PA_ELONG=0</code></td><td><span class="tag t-real">実機</span> pick_any</td></tr>
+<tr><td>高さが測れない細長い物を丸い棒とみなす <span class="tag t-new">追加</span></td><td><code>PA_SHINY=1</code></td><td><code>PA_SHINY=0</code></td><td><span class="tag t-real">実機</span> pick_any</td></tr>
+<tr><td>マットと判断する明るさの下限・色の濃さの上限 <span class="tag t-new">追加</span></td><td>初めの値は 110・45（夕方は <code>MAT_V_MIN=90 MAT_S_MAX=60</code> を付けて動かした）</td><td>—</td><td><span class="tag t-real">実機</span> measure</td></tr>
+<tr><td>実機のカメラの映像・撮った写真・進み具合を Chrome の 1 枚のページで見せる <span class="tag t-new">追加</span></td><td><code>CAM_WEB=1</code>（<code>http://127.0.0.1:8766/</code>）</td><td><code>CAM_WEB=0</code>（前のカメラの窓）</td><td><span class="tag t-real">実機</span> cam_view・web_page・pick_pass</td></tr>
+<tr><td>動きを Chrome の 1 枚のページで見せる <span class="tag t-new">追加</span></td><td><code>SIM_WEB=1</code></td><td><code>SIM_WEB=0</code>（前の窓）、<code>SIM_WEB=2</code>（ページと窓の両方 <span class="tag t-new">追加</span>）。次の回が始まるとページが自分でつなぎ直す <span class="tag t-new">追加</span></td><td><span class="tag t-sim">シミュレーター</span> web_view・test_sim_grasp・run_grip</td></tr>
+<tr><td>写真に JPEG（MJPG）の荒れを入れる <span class="tag t-new">追加</span></td><td><code>SIM_JPEG=0</code></td><td><code>SIM_JPEG=80</code> など（品質）</td><td><span class="tag t-sim">シミュレーター</span> sim_real</td></tr>
+<tr><td>シミュレーターの窓を別のディスプレイに出す <span class="tag t-new">追加</span></td><td><code>SIM_DISPLAY=other</code></td><td><code>SIM_DISPLAY=keep</code></td><td><span class="tag t-sim">シミュレーター</span> run_grip</td></tr>
+<tr><td>指示・どれから運ぶか・つかむ高さ・やり直し方を d1-3B で決める <span class="tag t-new">追加</span></td><td><code>PLAN_AI=1</code></td><td><code>PLAN_AI=0</code>（前の決まり）</td><td><span class="tag t-real">実機</span> plan_ai</td></tr>
+<tr><td>先に運ぶ候補から外す、隣の物までの空き <span class="tag t-new">追加</span></td><td><code>PLAN_MIN_GAP=8</code></td><td><code>PLAN_MIN_GAP=0</code></td><td><span class="tag t-real">実機</span> plan_ai</td></tr>
+<tr><td>決められなかった物を撮り直して聞き直す回数 <span class="tag t-new">追加</span></td><td><code>KIND_RETAKE=1</code></td><td><code>KIND_RETAKE=0</code></td><td><span class="tag t-real">実機</span> kind_ai</td></tr>
+<tr><td>物の種類を d1-3B で決める <span class="tag t-new">追加</span></td><td><code>KIND_AI=1</code></td><td><code>KIND_AI=0（長さと幅の表）</code></td><td><span class="tag t-real">実機</span> kind_ai</td></tr>
+<tr><td>判断の係が動いていない時 <span class="tag t-new">追加</span></td><td><code>KIND_TABLE=0（止める）</code></td><td><code>KIND_TABLE=1（表で決める）</code></td><td><span class="tag t-real">実機</span> kind_ai</td></tr>
+<tr><td>d1-3B が決めない確率の境 <span class="tag t-new">追加</span></td><td><code>KIND_P_MIN=0.4</code></td><td><code>KIND_P_MIN=0</code></td><td><span class="tag t-real">実機</span> kind_ai</td></tr>
+<tr><td>長さが合わない種類を外す範囲 <span class="tag t-new">追加</span></td><td><code>KIND_LEN_LO=0.6・KIND_LEN_HI=1.35</code></td><td><code>KIND_LEN_LO=0・KIND_LEN_HI=99</code></td><td><span class="tag t-real">実機</span> kind_ai</td></tr>
+<tr><td>銀の棒の明るさ <span class="tag t-new">追加</span></td><td><code>SIM_ROD_GRAY=0.55</code></td><td><code>SIM_ROD_GRAY=0.74</code></td><td><span class="tag t-sim">シミュレーター</span> sim_real</td></tr>
+<tr><td>覚えさせた箱へ運ぶ距離の上限 <span class="tag t-new">追加</span></td><td><code>PB_BOX_FAR=600</code></td><td>―（<code>--box</code> の時だけ）</td><td><span class="tag t-real">実機</span> pick_by_camera</td></tr>
+<tr><td>判断の係の速い動かし方 <span class="tag t-new">追加</span></td><td><code>D1_FAST=1</code></td><td><code>D1_FAST=0</code></td><td><span class="tag t-real">実機</span> d1_server</td></tr>
+<tr><td>先に計算 <span class="tag t-new">追加</span></td><td><code>BH_OVERLAP=1</code></td><td><code>BH_OVERLAP=0</code></td><td><span class="tag t-real">実機</span> height_by_motion</td></tr>
+<tr><td>止まったら撮る <span class="tag t-new">追加</span></td><td><code>BH_STILL=1</code></td><td><code>BH_STILL=0</code></td><td><span class="tag t-real">実機</span> height_by_motion</td></tr>
+<tr><td>暗い所のマット <span class="tag t-new">追加</span></td><td><code>MAT_DARK=1・DARK_V_MIN=90</code></td><td><code>MAT_DARK=0</code></td><td><span class="tag t-real">実機</span> measure</td></tr>
+<tr><td>輪郭の決め直しの乱数の種 <span class="tag t-new">追加</span></td><td><code>MEAS_SEED=12345</code></td><td><code>MEAS_SEED=-1</code></td><td><span class="tag t-real">実機</span> measure</td></tr>
+<tr><td>実機と同じ挟む力 <span class="tag t-new">追加</span></td><td><code>SIM_REAL_RULES=1</code></td><td><code>SIM_REAL_RULES=0</code></td><td><span class="tag t-sim">シミュレーター</span> test_sim_grasp</td></tr>
+<tr><td>シミュレーターの箱 <span class="tag t-new">追加</span></td><td><code>SIM_BOX=tray</code></td><td><code>SIM_BOX=card</code></td><td><span class="tag t-sim">シミュレーター</span> sim_real</td></tr>
+<tr><td>3 つ目の道具 <span class="tag t-new">追加</span></td><td><code>SIM_TOOL3=rod</code>（銀の棒）</td><td><code>SIM_TOOL3=driver</code>（ドライバー）</td><td><span class="tag t-sim">シミュレーター</span> sim_real</td></tr>
+<tr><td>箱の所では物を探さない <span class="tag t-new">追加</span></td><td><code>BOX_MASK=1</code></td><td><code>BOX_MASK=0</code></td><td><span class="tag t-real">実機</span> teach_box・pick_any</td></tr>
+<tr><td>指の所をマットとみなす <span class="tag t-new">追加</span></td><td><code>OBJ_FINGER=1</code></td><td><code>OBJ_FINGER=0</code></td><td><span class="tag t-real">実機</span> measure</td></tr>
+<tr><td>切れた細長い物をつなぐ <span class="tag t-new">追加</span></td><td><code>OBJ_JOIN=1</code></td><td><code>OBJ_JOIN=0</code></td><td><span class="tag t-real">実機</span> measure</td></tr>
+<tr><td>写真の上の端に触れた物も見つける <span class="tag t-new">追加</span></td><td><code>OBJ_BORDER=1</code></td><td><code>OBJ_BORDER=0</code></td><td><span class="tag t-real">実機</span> measure</td></tr>
+<tr><td>太さが変わる物とみなす幅の差 <span class="tag t-new">追加</span></td><td><code>PA_PART_WSTEP=8</code></td><td><code>PA_PART_WSTEP=5</code></td><td><span class="tag t-real">実機</span> pick_any</td></tr>
+<tr><td>腕の重さの打ち消し</td><td><code>SIM_GRAVCOMP=1</code></td><td><code>SIM_GRAVCOMP=0</code></td><td><span class="tag t-sim">シミュレーター</span> sim_real</td></tr>
+<tr><td>腕の目標の先回り</td><td><code>SIM_FEEDFWD=1</code></td><td><code>SIM_FEEDFWD=0</code></td><td><span class="tag t-sim">シミュレーター</span> sim_rtde</td></tr>
+<tr><td>止まった物で速さを 0 に（追う実験） <span class="tag t-new">追加</span></td><td><code>TRACK_STOP_FIX=1</code></td><td><code>TRACK_STOP_FIX=0</code></td><td><span class="tag t-sim">シミュレーター</span> track_sim</td></tr>
+<tr><td>隣の物とくっついた塊を欠けとみなす（追う実験） <span class="tag t-new">追加</span></td><td><code>TRACK_MERGE=25</code></td><td><code>TRACK_MERGE=0</code></td><td><span class="tag t-sim">シミュレーター</span> track_sim</td></tr>
+<tr><td>動かす物をほかの物から 90mm 離して置く（追う実験） <span class="tag t-new">追加</span></td><td><code>TRACK_START_SEP=1</code></td><td><code>TRACK_START_SEP=0</code></td><td><span class="tag t-sim">シミュレーター</span> track_sim</td></tr>
+<tr><td>三脚のずれを高い所の手首で覚える（追う実験） <span class="tag t-new">追加</span></td><td><code>TRACK_TRI_OFF=1</code></td><td><code>TRACK_TRI_OFF=0</code></td><td><span class="tag t-sim">シミュレーター</span> track_sim</td></tr>
+<tr><td>箱に入れたら続けて次の物へ（追う実験） <span class="tag t-new">追加</span></td><td><code>TRACK_CHAIN=1</code></td><td><code>TRACK_CHAIN=0</code></td><td><span class="tag t-sim">シミュレーター</span> track_sim</td></tr>
+</table></div>
+<p class="small">ファイルの控えは <code>jev/backup/</code> に、日付と a, b, c… の印を付けて残しています。</p>
+
+<h2 id="track">7b. 動く物を追いかける実験（10/20） <span class="tag t-new">追加</span></h2>
+<div class="note"><b>10/20 の追加：</b>マットの上を動く物を、手首のカメラと三脚のカメラで追いかけてつかむ実験を作りました（<code>robot/track_sim.py</code>）。種類・つかむ高さ・やり直し方は d1-3B が決めます。</div>
+<ul>
+<li><b>動き方：</b>line（まっすぐ、マットの端とほかの物の 90mm 手前で跳ね返る）・stop（1 秒動いて止まる）。速さ 50・100mm/秒。</li>
+<li><b>予測：</b>α-β で位置と速さを予測し、カメラの遅れ（0.1 秒）の分だけ先回りします。止まった・跳ね返ったら速さを 0 にします。</li>
+<li><b>三脚のカメラ：</b>指が下りて手首のカメラで物が隠れても、横から見続けます。三脚の値は、高い所の手首の値とのずれを覚えて足します。シミュレーターにも三脚のモデルを置きました。本物の三脚は校正で、マットの手前・机から約 35cm と分かりました。</li>
+<li><b>机に当てない：</b>指先は机から 3mm より下げず、目標の 15mm 上からゆっくり下ろします。爪と机のすき間は最小 2.8mm、閉じるのは約 0.5 秒です。</li>
+<li><b>見つけたバグ：</b>速いペンが隣の物と 1 つの塊に写り、推定が 50〜80mm 遅れた → 追う物より 25mm 以上長い塊は使わない。跳ね返った物がマットの外へ出た → マットの中に止める。</li>
+<li><b>結果：</b>1 本ずつ 12/12。3 本の場面は直しの前 9/12、直しの後は 4/4 まで（残り 8 回はまだ）。</li>
+</ul>
+<h2 id="track2">7c. 三脚のカメラで追う実機版をシミュレーターで（10/22） <span class="tag t-new">追加</span></h2>
+<div class="note"><b>10/22 の追加：</b>実機用の <code>real_ur/track_real.py</code> を、そのままシミュレーターで動かして直しました（<code>robot/test_track_real.py 3 --show</code>）。無駄な動きを減らし、1 場面 44.2 秒 → 35.7 秒（18/18）。</div>
+<ul>
+<li><b>無駄な動きを減らした：</b>①下りた高さから上がり直さずにつかむ ②2 個目からは箱の上で三脚を見て次を探す ③物の上で 3 回止まらず、servoL で止まらずに寄せて下りる。</li>
+<li><b>隠れた時：</b>腕の真下の物は三脚から見えにくいので、真上で見えない時・下りる途中で隠れた時は、止まって手首のカメラで 1 枚撮ります。前は「下りる → 隠れて上がる → また見えて下りる」を 10 秒繰り返すことがありました。</li>
+<li><b>マット：</b>実機に合わせて 600×450mm にし、三脚はマットの外に置きました。腕の根元に近すぎる所（腕どうしが当たる）と、遠すぎる所（750mm 超、届かない）には物を置きません。</li>
+<li><b>手首のカメラの使い方を 1 つずつ比べた：</b>物を 20mm/秒で滑らせる試験で、「真上で見えない時だけ 1 枚」が 9/9。常に手首でも測る形は、写真の端で切れた物の取り違えなどを直した後 9/9。手首の枚数・JPEG の荒れは成功の数に効きませんでした。</li>
+<li><b>動き続ける物（夕方）<span class="tag t-new">追加</span>：</b>つかむまで物を 10mm/秒で動かし続ける試験（<code>TRR_MOVE=10 TRR_MOVE_S=0</code>）。つかむ高さまで追いながら下りてすぐ閉じる（<code>TR_TO_GRIP=1</code>）と、4/9 → 9/9（追い方を d1-3B が選ぶ時）。</li>
+<li><b>d1-3B に任せる所を増やした<span class="tag t-new">追加</span>：</b>追い方（<code>TR_D1_STEER</code>）・閉じるか（<code>TR_D1_CLOSE</code>）・止まって手首で撮るか（<code>TR_D1_LOOK</code>）・迷いの例外（<code>TR_D1_NOEXC</code>）。1 つずつ足して比べています。</li>
+<li><b>問いの文章を先に比べる<span class="tag t-new">追加</span>：</b>シミュレーターの前に、状態を並べて d1-3B に直接聞き、文章ごとの正解の数を比べます（<code>robot/eval_steer_text.py</code>）。選んだ結果を数字で書き、失敗ははっきり書き、問いは中立に。迷う問いはシューティングの時と同じ形。追い方 60→90/90、撮るか 8→108/108、閉じるか 20→87/90、向き 63→142/150。</li>
+<li><b>爪を当てない<span class="tag t-new">追加</span>：</b>ずれが大きい間は物の上で追う（<code>TR_CLEAR_MM</code>）、低い所で隠れても先を読み続ける（<code>TR_PRED_LOW_S</code>）。</li>
+<li><b>つかむ時の動きを減らした<span class="tag t-new">追加</span>：</b>すぐ閉じる（<code>TR_QUICK_CLOSE</code>）・腕を止めずに追いながら閉じる（<code>TR_CLOSE_MOVING</code>）・当たったら動く向きへ寄せて上がる（<code>TR_HIT_UP</code>）・一部しか見えない時は横だけ（<code>TR_PARTIAL</code>）。9/9 の土台に 1 つずつ足して、どれも 9/9。やり直しても取れなければ見張り（<code>robot/logs/stop_on_miss.sh</code>）が試験を止めます。</li>
+<li><b>ページの映像<span class="tag t-new">追加</span>：</b>見せる映像だけ 480×270 で描き、3 コマごとに送ります（<code>TRR_VIEW_EVERY</code>・<code>TRR_VIEW_W</code>）。1 回 16.2ms → 2.2ms。</li>
+<li><b>横へ動かす場面<span class="tag t-new">追加</span>：</b><code>TRR_MOVE_SIDE=1</code> で、物を長い向きと直角（指を閉じる向き）へだけ動かします。消しゴムの弱い所を調べる試験です。</li>
+<li><b>遠くの物：</b>奥の小さく写る物を面積で判定する（<code>TRI_MIN_MM2</code>）、「それ以外」になった物を手首で聞き直す（<code>TR_NEAR_LOOK</code>）を作り、比べています。</li>
+</ul>
+<h2 id="numbers">8. 成績の移り変わり（10/16）</h2>
+<div class="table-wrap"><table>
+<tr><th>時点</th><th>つかんで箱に入れた回数</th><th>探す時間</th><th>主な変化</th></tr>
+<tr><td>朝</td><td>4/5 → 9/9（マットの上に置く）</td><td>8.3 秒</td><td>ハンドの模型を実機の寸法に</td></tr>
+<tr><td>昼</td><td>15/16（10 場面）</td><td>6.2 秒</td><td>縁の決め方・円柱の幅・高さの測り方</td></tr>
+<tr><td>午後</td><td>15/15（ドライバーの軸も）</td><td>約 6 秒</td><td>太いドライバーは軸をつかむ</td></tr>
+<tr><td>腕の垂れを直した直後</td><td>8/14</td><td>約 4 秒</td><td>本当は下りる量が足りないことが見えた</td></tr>
+<tr><td>下りる高さを形で変えた</td><td>13/14</td><td>4.0〜4.1 秒</td><td></td></tr>
+<tr><td>ペンの端をつかむ件を直した</td><td>12/12（3 個は外した）</td><td>4.0〜4.1 秒</td><td></td></tr>
+<tr><td>太さが変わらない物は中央値</td><td>14/14（1 個は外した）</td><td>4.0〜4.1 秒</td><td></td></tr>
+<tr><td>高さを右と左の平均で決める</td><td>15/15（外した物 0）</td><td>4.9〜5.1 秒</td><td></td></tr>
+<tr><td>探す計算を答えを変えずに速く（シミュレーター）</td><td>15/15</td><td>3.8〜4.2 秒</td><td>計算 1.14 → 0.61 秒</td></tr>
+<tr><td><b>実機（夜）</b> <span class="tag t-new">追加</span></td><td><b>消しゴム・ペン・銀の棒 3/3</b>（最後の通し、すべて 1 回目）</td><td>撮る 3 枚 5.2 秒＋計算 約 1 秒</td><td>1 つあたり約 20 秒（つかむ・運ぶ・置く 10〜11 秒）。始めは 48 秒</td></tr>
+</table></div>
+<div class="warn">朝〜午後の成績は、腕が重さで垂れた（5〜10mm 低く下りた）状態で測ったものです。たまたま深く下りてつかめていた回が含まれます。</div>
+
+<h2 id="log">9. 改善・改良とバグの記録 <span class="tag t-new">日付ごとのファイルへ</span></h2>
+<div class="card">
+<p>直したこと・見つけたバグの記録は、日付ごとのファイルに分けています（md と、同じ名前の Word）。</p>
+<ul>
+<li><code>docs/変更記録/目次.md</code>（日付の一覧）</li>
+<li><code>docs/変更記録/2026-10-13.md</code> 〜 <code>2026-10-19.md</code></li>
+</ul>
+<p>仕組みを項目ごとに「何をしているか」と「技術的にどうしているか」で説明した資料は、<code>docs/技術仕様書.md</code>（Word は <code>.docx</code>）です。</p>
+<p class="small">直すたびに、その日のファイルに書き足し、<code>tools\md_to_docx.py</code> で Word を作り直します。</p>
+</div>
+</main>
+</body>
+</html>
