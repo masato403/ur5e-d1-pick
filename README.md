@@ -7,7 +7,7 @@
 
 [![デモ動画](https://img.youtube.com/vi/cd6ZEFdLtOw/maxresdefault.jpg)](https://youtu.be/cd6ZEFdLtOw)
 
-▶ **[YouTube で動画を見る](https://youtu.be/cd6ZEFdLtOw)**
+▶ **[YouTube で動画を見る](https://youtu.be/cd6ZEFdLtOw)**　／　📝 **[解説記事（note）](https://note.com/magic_cedum2707/n/n57efdda71997)**
 
 ## 実機とシミュレーター
 
@@ -147,4 +147,4 @@ python robot/test_track_real.py 5 --show --say=全部の物を箱に入れて
 ## 付記
 
 株式会社スリーアップ・テクノロジー様でのインターンシップにおける実習として取り組んだ内容です。
-解説記事：note（公開後にリンクを追加します）
+解説記事（note）：[30 億パラメータの判断 AI で UR5e を動かす](https://note.com/magic_cedum2707/n/n57efdda71997)
