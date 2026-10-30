@@ -140,6 +140,10 @@ python robot/test_track_real.py 5 --show --say=全部の物を箱に入れて
 
 ---
 
+## ライセンス
+
+このリポジトリのコードは MIT License です（`LICENSE`）。d1-3B のモデルは含まず、LFM Open License v1.0 に従います。
+
 ## 付記
 
 株式会社スリーアップ・テクノロジー様でのインターンシップにおける実習として取り組んだ内容です。
